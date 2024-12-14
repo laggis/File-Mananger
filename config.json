@@ -1,0 +1,43 @@
+{
+    "blocked_items": {
+        "files": [
+            "users.json",
+            "config.json",
+            "requirements.txt",
+            "config.json",
+            "config_manager.py",
+            "filemanager.py",
+            "users.json",
+            "web.config",
+            "__pycache__",
+            "*.py",
+            "*.pyc"
+        ],
+        "folders": [
+            "__pycache__",
+            "instance",
+            "templates",
+            "custerr",
+            "Installer",
+            "logs",
+            "temp",
+            "cdn",
+            "public",
+            ".git"
+        ],
+        "patterns": [
+            ".*"
+        ],
+        "exceptions": {
+            "admin_can_see": true,
+            "allowed_files": [
+                ""
+            ],
+            "allowed_folders": [
+                "public",
+                "shared",
+                "downloads"
+            ]
+        }
+    }
+}

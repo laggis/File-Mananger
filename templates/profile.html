@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - PenguinHosting File Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0a192f;
+            --primary: #172a45;
+            --primary-light: #303c55;
+            --accent: #64ffda;
+            --text: #8892b0;
+            --text-light: #ccd6f6;
+        }
+        body {
+            background: var(--primary-dark);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(23, 42, 69, 0.8);
+            border: 1px solid rgba(100, 255, 218, 0.1);
+        }
+        .cyber-border {
+            clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+        }
+        .glow {
+            box-shadow: 0 0 15px rgba(100, 255, 218, 0.2);
+        }
+        .hover-glow:hover {
+            box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+        }
+        .text-accent {
+            color: var(--accent);
+        }
+        .text-light {
+            color: var(--text-light);
+        }
+        .border-accent {
+            border-color: var(--accent);
+        }
+        input {
+            background: var(--primary-dark);
+            border: 1px solid var(--accent);
+            color: var(--text-light);
+        }
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <nav class="glass-effect p-4 mb-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="text-2xl font-bold text-accent">
+                <i class="fas fa-cube mr-2"></i>PenguinHosting File Manager
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('index') }}" class="text-accent hover:text-light">
+                    <i class="fas fa-folder mr-1"></i>Files
+                </a>
+                {% if is_admin %}
+                <a href="{{ url_for('admin') }}" class="text-accent hover:text-light">
+                    <i class="fas fa-user-shield mr-1"></i>Admin
+                </a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="text-accent hover:text-light">
+                    <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4">
+        <div class="glass-effect cyber-border p-8 max-w-md mx-auto">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-accent mb-2">
+                    <i class="fas fa-user-circle mr-2"></i>Profile Settings
+                </h1>
+                <p class="text-light">{{ username }}</p>
+                {% if is_admin %}
+                <p class="text-accent mt-2"><i class="fas fa-shield-alt mr-1"></i>Administrator</p>
+                {% endif %}
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-6 p-3 {% if 'success' in message.lower() %}bg-green-900{% else %}bg-red-900{% endif %} text-light rounded">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="space-y-6">
+                <div>
+                    <label for="current_password" class="block text-accent mb-2">Current Password</label>
+                    <input type="password" id="current_password" name="current_password" required
+                           class="w-full p-3 rounded cyber-border focus:border-accent transition duration-300"
+                           placeholder="Enter your current password">
+                </div>
+                <div>
+                    <label for="new_password" class="block text-accent mb-2">New Password</label>
+                    <input type="password" id="new_password" name="new_password" required
+                           class="w-full p-3 rounded cyber-border focus:border-accent transition duration-300"
+                           placeholder="Enter your new password">
+                </div>
+                <div>
+                    <label for="confirm_password" class="block text-accent mb-2">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required
+                           class="w-full p-3 rounded cyber-border focus:border-accent transition duration-300"
+                           placeholder="Confirm your new password">
+                </div>
+                <button type="submit" 
+                        class="w-full p-3 bg-transparent border border-accent text-accent rounded cyber-border hover-glow transition duration-300">
+                    <i class="fas fa-key mr-2"></i>Change Password
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('form').onsubmit = function(e) {
+            const newPass = document.getElementById('new_password').value;
+            const confirmPass = document.getElementById('confirm_password').value;
+            
+            if (newPass !== confirmPass) {
+                e.preventDefault();
+                alert('New passwords do not match!');
+                return false;
+            }
+            return true;
+        };
+    </script>
+</body>
+</html>
