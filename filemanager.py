@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, send_from_directory, jsonify
 import os
 from functools import wraps
 from users import UserManager
@@ -8,13 +8,15 @@ from werkzeug.utils import secure_filename
 import json
 import shutil
 import humanize
-from datetime import datetime
+from datetime import datetime, timedelta
 import tempfile
 import zipfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Session lasts 7 days
 
 # Initialize user manager
 user_manager = UserManager()
@@ -47,7 +49,10 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'username' not in session:
-            return jsonify({'error': 'Not logged in'}), 401
+            if request.is_json:
+                return jsonify({'error': 'Not logged in'}), 401
+            flash('Please log in first.', 'error')
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -68,6 +73,7 @@ def login():
         
         success, message = user_manager.verify_user(username, password)
         if success:
+            session.permanent = True  # Make the session permanent
             session['username'] = message  # message contains actual username with correct case
             session['is_admin'] = user_manager.is_admin(message)
             return redirect(url_for('index'))
@@ -79,6 +85,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
+    flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -334,42 +341,77 @@ def create_folder():
 
     return redirect(url_for('index'))
 
-@app.route('/download/<path:filename>')
+@app.route('/download', methods=['GET'])
 @login_required
-def download_file(filename):
+def download():
     try:
-        # Get the absolute path of the file
-        file_path = os.path.join(ROOT_DIR, filename)
+        file_path = request.args.get('path')
+        app.logger.info(f"Download request for path: {file_path}")
         
-        # Security check: Ensure the file is within the allowed directory
-        if not os.path.commonprefix([os.path.abspath(file_path), ROOT_DIR]) == ROOT_DIR:
-            return jsonify({'error': 'Access denied'}), 403
+        if not file_path:
+            app.logger.error("No file path provided")
+            return jsonify({'error': 'No file specified'}), 400
+            
+        # Clean the file path and make it absolute
+        clean_path = file_path.replace('\\', '/').lstrip('/')
+        abs_path = os.path.abspath(os.path.join(ROOT_DIR, clean_path))
+        app.logger.info(f"Absolute path: {abs_path}")
         
-        # Check if file exists
-        if not os.path.exists(file_path):
+        # Security checks
+        if not abs_path.startswith(ROOT_DIR):
+            app.logger.error(f"Invalid path: {abs_path} (outside ROOT_DIR: {ROOT_DIR})")
+            return jsonify({'error': 'Invalid file path'}), 403
+            
+        if not os.path.exists(abs_path):
+            app.logger.error(f"File not found: {abs_path}")
             return jsonify({'error': 'File not found'}), 404
-        
-        # Check if file is in blocked list
-        if config_manager.is_blocked(file_path, session.get('is_admin', False)):
-            return jsonify({'error': 'File is blocked'}), 403
-        
-        # Get user's current download count
-        current_count = get_user_download_count(session['username'])
-        daily_limit = DOWNLOAD_LIMITS['admin'] if user_manager.is_admin(session['username']) else DOWNLOAD_LIMITS['default']
-        
-        # Check if user has exceeded their daily limit
-        if current_count >= daily_limit:
-            return jsonify({'error': 'Daily download limit reached'}), 429
-        
-        # Update download count before processing download
-        update_user_download_count(session['username'])
-        
-        # Send the file
-        return send_file(file_path, as_attachment=True)
-        
+            
+        if not os.path.isfile(abs_path):
+            app.logger.error(f"Not a file: {abs_path}")
+            return jsonify({'error': 'Not a file'}), 400
+            
+        # Check if file is blocked
+        if config_manager.is_blocked(abs_path, session.get('is_admin', False)):
+            app.logger.error(f"Access denied to blocked file: {abs_path}")
+            return jsonify({'error': 'Access denied'}), 403
+
+        # Get file size for logging
+        file_size = os.path.getsize(abs_path)
+        app.logger.info(f"Sending file: {abs_path} (size: {file_size} bytes)")
+
+        try:
+            # For large files, use send_from_directory instead of send_file
+            if file_size > 100 * 1024 * 1024:  # 100MB
+                directory = os.path.dirname(abs_path)
+                filename = os.path.basename(abs_path)
+                app.logger.info(f"Using send_from_directory for large file: {filename}")
+                response = send_from_directory(
+                    directory,
+                    filename,
+                    as_attachment=True
+                )
+            else:
+                response = send_file(
+                    abs_path,
+                    as_attachment=True,
+                    download_name=os.path.basename(abs_path)
+                )
+            
+            # Add headers to prevent caching and handle large files
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            response.headers["Content-Length"] = str(file_size)
+            
+            return response
+            
+        except Exception as e:
+            app.logger.error(f"Error sending file: {str(e)}")
+            return jsonify({'error': 'Failed to send file'}), 500
+            
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")
-        return jsonify({'error': 'Download failed'}), 500
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/download-multiple', methods=['POST'])
 @login_required

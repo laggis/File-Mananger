@@ -136,7 +136,7 @@
                     {% endif %}
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button id="downloadSelected" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow disabled:opacity-50" disabled>
+                    <button id="downloadSelected" data-action="download-selected" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow disabled:opacity-50" disabled>
                         <i class="fas fa-download mr-2"></i>Download Selected (<span id="selectedCount">0</span>)
                     </button>
                     <button onclick="document.getElementById('uploadForm').classList.toggle('hidden')" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow">
@@ -172,7 +172,6 @@
             <div class="grid grid-cols-1 gap-4">
                 {% for file in files %}
                 <div class="file-item glass-effect p-4 rounded flex justify-between items-center {% if not file.is_directory %}cursor-pointer{% endif %}"
-                    {% if not file.is_directory %}onclick="toggleSelect(this, event)"{% endif %}
                     data-path="{{ file.path }}"
                     data-is-dir="{{ file.is_directory|lower }}">
                     <div class="flex items-center space-x-4">
@@ -204,7 +203,7 @@
     </div>
 
     <div id="contextMenu" style="display: none;">
-        <div class="context-menu-item" onclick="downloadSelectedFiles()">
+        <div class="context-menu-item" data-action="context-download" onclick="downloadSelectedFiles()">
             <i class="fas fa-download mr-2"></i> Download as ZIP
         </div>
         <div class="context-menu-item" onclick="clearSelection()">
@@ -213,38 +212,36 @@
     </div>
 
     <script>
-        let selectedFiles = new Set();
-
-        function redirectToLogin() {
-            window.location.href = "{{ url_for('login') }}";
+        const selectedFiles = new Set();
+        
+        // Debug logging
+        function logDebug(message, data = null) {
+            console.log(`[Debug] ${message}`, data || '');
         }
 
-        async function downloadFile(path) {
+        async function downloadFile(filePath) {
+            logDebug('Attempting to download file:', filePath);
             try {
-                const response = await fetch(`/download/${path}`, {
-                    method: 'GET',
-                    credentials: 'same-origin'
-                });
+                const encodedPath = encodeURIComponent(filePath);
+                logDebug('Encoded path:', encodedPath);
                 
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = path.split('/').pop();
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    a.remove();
-                } else if (response.status === 401) {
-                    redirectToLogin();
-                } else {
-                    const errorData = await response.json();
-                    alert(errorData.error || 'Download failed');
-                }
+                // Create an invisible iframe for the download
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                
+                // Set the iframe source to the download URL
+                iframe.src = `/download?path=${encodedPath}`;
+                
+                // Remove the iframe after a delay
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 5000);
+                
+                logDebug('Download initiated through iframe');
             } catch (error) {
                 console.error('Download error:', error);
-                alert('Error downloading file');
+                alert(error.message || 'Error downloading file');
             }
         }
 
@@ -252,51 +249,72 @@
             if (selectedFiles.size === 0) return;
             
             try {
-                const filePaths = Array.from(selectedFiles);
+                // If only one file is selected and it's a zip, download it directly
+                if (selectedFiles.size === 1) {
+                    const filePath = Array.from(selectedFiles)[0];
+                    if (filePath.toLowerCase().endsWith('.zip')) {
+                        logDebug('Downloading single zip file directly:', filePath);
+                        await downloadFile(filePath);
+                        return;
+                    }
+                }
+                
+                logDebug('Downloading multiple files as zip:', Array.from(selectedFiles));
                 const response = await fetch('/download-multiple', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ files: filePaths })
+                    credentials: 'include',
+                    body: JSON.stringify({ files: Array.from(selectedFiles) })
                 });
                 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        redirectToLogin();
+                        window.location.href = '/login';
                         return;
                     }
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Download failed');
                 }
                 
-                // Get the filename from the Content-Disposition header if possible
-                const contentDisposition = response.headers.get('Content-Disposition');
-                let filename = 'selected_files.zip';
-                if (contentDisposition) {
-                    const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-                    if (matches != null && matches[1]) {
-                        filename = matches[1].replace(/['"]/g, '');
-                    }
-                }
-                
                 const blob = await response.blob();
+                logDebug('Received zip blob, size:', blob.size);
+                
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
+                a.style.display = 'none';
                 a.href = url;
-                a.download = filename;
+                a.download = 'selected_files.zip';
                 document.body.appendChild(a);
                 a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
                 
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
                 clearSelection();
+                
             } catch (error) {
                 console.error('Download error:', error);
                 alert(error.message || 'Error downloading files');
             } finally {
                 document.getElementById('contextMenu').style.display = 'none';
+            }
+        }
+
+        function updateContextMenu(target) {
+            const contextMenu = document.getElementById('contextMenu');
+            const downloadItem = contextMenu.querySelector('[data-action="context-download"]');
+            
+            if (selectedFiles.size === 1) {
+                const filePath = Array.from(selectedFiles)[0];
+                if (filePath.toLowerCase().endsWith('.zip')) {
+                    downloadItem.innerHTML = '<i class="fas fa-download mr-2"></i> Download ZIP';
+                } else {
+                    downloadItem.innerHTML = '<i class="fas fa-download mr-2"></i> Download as ZIP';
+                }
+            } else {
+                downloadItem.innerHTML = '<i class="fas fa-download mr-2"></i> Download as ZIP';
             }
         }
 
@@ -328,17 +346,77 @@
         }
 
         function updateDownloadButton() {
-            const btn = document.getElementById('downloadSelected');
-            const count = document.getElementById('selectedCount');
-            count.textContent = selectedFiles.size;
-            btn.disabled = selectedFiles.size === 0;
+            const btn = document.querySelector('[data-action="download-selected"]');
+            if (btn) {
+                btn.textContent = `Download Selected (${selectedFiles.size})`;
+                btn.disabled = selectedFiles.size === 0;
+            }
         }
 
-        document.getElementById('downloadSelected').addEventListener('click', function() {
-            if (selectedFiles.size > 0) {
-                downloadSelectedFiles();
+        function initializeFileHandlers() {
+            logDebug('Initializing file handlers');
+            
+            // File click handler
+            document.querySelectorAll('.file-item').forEach(item => {
+                if (item.dataset.isDir === 'true') {
+                    // Handle folder clicks
+                    item.addEventListener('click', function(e) {
+                        if (!e.target.closest('.context-menu')) {
+                            const path = this.dataset.path;
+                            if (path) {
+                                window.location.href = `/?path=${encodeURIComponent(path)}`;
+                            }
+                        }
+                    });
+                } else {
+                    // Handle file clicks
+                    item.addEventListener('click', function(e) {
+                        if (!e.target.closest('.context-menu')) {
+                            toggleSelect(this, e);
+                        }
+                    });
+                    
+                    // Add double-click for files only
+                    item.addEventListener('dblclick', function(e) {
+                        if (!e.target.closest('.context-menu')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const path = this.dataset.path;
+                            if (path) {
+                                logDebug('Double-click download:', path);
+                                downloadFile(path);
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Download Selected button
+            const downloadSelectedBtn = document.querySelector('[data-action="download-selected"]');
+            if (downloadSelectedBtn) {
+                downloadSelectedBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    logDebug('Download Selected clicked, files:', Array.from(selectedFiles));
+                    if (selectedFiles.size > 0) {
+                        downloadSelectedFiles();
+                    }
+                });
             }
+        }
+
+        // Initialize everything when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            logDebug('DOM Content Loaded');
+            initializeFileHandlers();
         });
+
+        function clearSelection() {
+            selectedFiles.clear();
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateDownloadButton();
+        }
 
         async function uploadFile(event) {
             event.preventDefault();
@@ -429,6 +507,7 @@
                 if (menuRect.bottom > windowHeight) {
                     menu.style.top = (windowHeight - menuRect.height) + 'px';
                 }
+                updateContextMenu(fileItem);
             }
         });
 
@@ -438,23 +517,6 @@
             if (!menu.contains(e.target)) {
                 menu.style.display = 'none';
             }
-        });
-
-        function clearSelection() {
-            selectedFiles.clear();
-            document.querySelectorAll('.selected').forEach(el => {
-                el.classList.remove('selected');
-            });
-            document.getElementById('contextMenu').style.display = 'none';
-            updateDownloadButton();
-        }
-
-        // Add double-click event listener only to files
-        document.querySelectorAll('.file-item[data-is-dir="false"]').forEach(item => {
-            item.addEventListener('dblclick', (e) => {
-                e.preventDefault();
-                downloadFile(item.dataset.path);
-            });
         });
     </script>
 </body>
