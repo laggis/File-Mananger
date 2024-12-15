@@ -298,25 +298,47 @@ def delete():
 
 @app.route('/upload', methods=['POST'])
 @login_required
-@admin_required
 def upload_file():
-    if 'file' not in request.files:
-        flash('No file part', 'error')
-        return redirect(url_for('index'))
-    
-    file = request.files['file']
-    if file.filename == '':
-        flash('No selected file', 'error')
-        return redirect(url_for('index'))
-    
-    if file and allowed_file(file.filename):
+    try:
+        # Check if user is admin
+        if not session.get('is_admin', False):
+            app.logger.warning(f"Non-admin user {session.get('username')} attempted to upload file")
+            return jsonify({'error': 'Only administrators can upload files'}), 403
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+            
+        current_path = request.form.get('path', '')
+        if current_path:
+            upload_folder = os.path.join(ROOT_DIR, current_path)
+        else:
+            upload_folder = ROOT_DIR
+            
+        # Security check for upload path
+        if not os.path.abspath(upload_folder).startswith(ROOT_DIR):
+            return jsonify({'error': 'Invalid upload path'}), 403
+            
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+            
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        flash('File uploaded successfully', 'success')
-    else:
-        flash('File type not allowed', 'error')
-    
-    return redirect(url_for('index'))
+        file_path = os.path.join(upload_folder, filename)
+        
+        # Check if file already exists
+        if os.path.exists(file_path):
+            return jsonify({'error': 'File already exists'}), 409
+            
+        file.save(file_path)
+        app.logger.info(f"Admin user {session.get('username')} uploaded file: {file_path}")
+        return jsonify({'message': 'File uploaded successfully'})
+        
+    except Exception as e:
+        app.logger.error(f"Upload error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/create-folder', methods=['POST'])
 @login_required

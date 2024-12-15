@@ -100,7 +100,7 @@
         {% if is_admin %}
         <div class="mb-6 flex space-x-4">
             <!-- Upload Form -->
-            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="flex-1">
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" class="flex-1 admin-only">
                 <div class="glass-effect p-4 rounded">
                     <div class="flex items-center space-x-4">
                         <input type="file" name="file" class="flex-1 p-2 bg-dark rounded text-light">
@@ -112,7 +112,7 @@
             </form>
 
             <!-- Create Folder Form -->
-            <form action="{{ url_for('create_folder') }}" method="post" class="flex-1">
+            <form action="{{ url_for('create_folder') }}" method="post" class="flex-1 admin-only">
                 <div class="glass-effect p-4 rounded">
                     <div class="flex items-center space-x-4">
                         <input type="text" name="folder_name" placeholder="Folder name" class="flex-1 p-2 bg-dark rounded text-light">
@@ -139,17 +139,17 @@
                     <button id="downloadSelected" data-action="download-selected" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow disabled:opacity-50" disabled>
                         <i class="fas fa-download mr-2"></i>Download Selected (<span id="selectedCount">0</span>)
                     </button>
-                    <button onclick="document.getElementById('uploadForm').classList.toggle('hidden')" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow">
+                    <button onclick="document.getElementById('uploadForm').classList.toggle('hidden')" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow admin-only">
                         <i class="fas fa-upload mr-2"></i>Upload
                     </button>
-                    <button onclick="document.getElementById('newFolderForm').classList.toggle('hidden')" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow">
+                    <button onclick="document.getElementById('newFolderForm').classList.toggle('hidden')" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow admin-only">
                         <i class="fas fa-folder-plus mr-2"></i>New Folder
                     </button>
                 </div>
             </div>
 
             <!-- Upload Form -->
-            <form id="uploadForm" class="mb-6 hidden" onsubmit="return uploadFile(event)">
+            <form id="uploadForm" class="mb-6 hidden admin-only" onsubmit="return uploadFile(event)">
                 <div class="flex space-x-4">
                     <input type="file" name="file" class="flex-grow p-2 rounded bg-transparent border border-accent text-light">
                     <button type="submit" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow">
@@ -159,7 +159,7 @@
             </form>
 
             <!-- New Folder Form -->
-            <form id="newFolderForm" class="mb-6 hidden" onsubmit="return createFolder(event)">
+            <form id="newFolderForm" class="mb-6 hidden admin-only" onsubmit="return createFolder(event)">
                 <div class="flex space-x-4">
                     <input type="text" name="folder_name" placeholder="Folder name" class="flex-grow p-2 rounded bg-transparent border border-accent text-light">
                     <button type="submit" class="px-4 py-2 bg-transparent border border-accent text-accent rounded hover-glow">
@@ -219,6 +219,20 @@
             console.log(`[Debug] ${message}`, data || '');
         }
 
+        // Check if a file is a zip file
+        function isZipFile(filePath) {
+            return filePath.toLowerCase().endsWith('.zip');
+        }
+
+        // Show/hide admin controls based on user role
+        function updateAdminControls() {
+            const isAdmin = {{ 'true' if session.get('is_admin', False) else 'false' }};
+            const adminControls = document.querySelectorAll('.admin-only');
+            adminControls.forEach(control => {
+                control.style.display = isAdmin ? '' : 'none';
+            });
+        }
+
         async function downloadFile(filePath) {
             logDebug('Attempting to download file:', filePath);
             try {
@@ -252,7 +266,7 @@
                 // If only one file is selected and it's a zip, download it directly
                 if (selectedFiles.size === 1) {
                     const filePath = Array.from(selectedFiles)[0];
-                    if (filePath.toLowerCase().endsWith('.zip')) {
+                    if (isZipFile(filePath)) {
                         logDebug('Downloading single zip file directly:', filePath);
                         await downloadFile(filePath);
                         return;
@@ -308,7 +322,7 @@
             
             if (selectedFiles.size === 1) {
                 const filePath = Array.from(selectedFiles)[0];
-                if (filePath.toLowerCase().endsWith('.zip')) {
+                if (isZipFile(filePath)) {
                     downloadItem.innerHTML = '<i class="fas fa-download mr-2"></i> Download ZIP';
                 } else {
                     downloadItem.innerHTML = '<i class="fas fa-download mr-2"></i> Download as ZIP';
@@ -407,6 +421,7 @@
         // Initialize everything when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
             logDebug('DOM Content Loaded');
+            updateAdminControls();
             initializeFileHandlers();
         });
 
@@ -487,27 +502,40 @@
             }
         }
 
+        function setupContextMenu(fileItem) {
+            const contextMenu = document.getElementById('contextMenu');
+            const downloadBtn = contextMenu.querySelector('[data-action="context-download"]');
+            const path = fileItem.dataset.path;
+            
+            // Update download button text based on file type
+            if (isZipFile(path)) {
+                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Download ZIP';
+                downloadBtn.onclick = (e) => {
+                    e.preventDefault();
+                    downloadFile(path);
+                };
+            } else {
+                downloadBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Download as ZIP';
+                downloadBtn.onclick = (e) => {
+                    e.preventDefault();
+                    downloadSelectedFiles();
+                };
+            }
+        }
+
         document.addEventListener('contextmenu', function(e) {
             const fileItem = e.target.closest('.file-item');
-            if (fileItem && selectedFiles.size > 0) {
+            if (fileItem && !fileItem.classList.contains('folder')) {
                 e.preventDefault();
-                const menu = document.getElementById('contextMenu');
-                menu.style.display = 'block';
-                menu.style.left = e.pageX + 'px';
-                menu.style.top = e.pageY + 'px';
-
-                // Adjust menu position if it goes off screen
-                const menuRect = menu.getBoundingClientRect();
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
-
-                if (menuRect.right > windowWidth) {
-                    menu.style.left = (windowWidth - menuRect.width) + 'px';
-                }
-                if (menuRect.bottom > windowHeight) {
-                    menu.style.top = (windowHeight - menuRect.height) + 'px';
-                }
-                updateContextMenu(fileItem);
+                const contextMenu = document.getElementById('contextMenu');
+                contextMenu.style.left = e.pageX + 'px';
+                contextMenu.style.top = e.pageY + 'px';
+                contextMenu.style.display = 'block';
+                setupContextMenu(fileItem);
+                
+                // Clear previous selection and select this file
+                clearSelection();
+                toggleSelect(fileItem, e);
             }
         });
 
