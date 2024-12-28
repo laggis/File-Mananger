@@ -1,97 +1,114 @@
-# FiveM Stream Splitter
+# File Manager
 
-A Python-based utility tool designed to split large FiveM stream files into smaller, more manageable chunks. This tool is particularly useful for managing large resource files that may cause streaming issues or exceed FiveM's file size limitations.
+A Python-based file management utility with a graphical user interface (GUI) for efficient file organization and manipulation.
+
+![File Manager Screenshot](screenshot.png) <!-- You can add a screenshot of your application here -->
 
 ## Features
 
-- **Automatic File Splitting:**
-  - Splits large stream files into smaller chunks
-  - Maintains file integrity during splitting
-  - Configurable chunk sizes
+- **File Operations:**
+  - Copy files and directories
+  - Move files and directories
+  - Delete files and directories
+  - Rename files and folders
+  - Create new directories
 
-- **Support for Multiple File Types:**
-  - Handles common FiveM streaming files
-  - Compatible with YTD files
-  - Works with various resource formats
+- **User Interface:**
+  - Clean and intuitive GUI
+  - Easy-to-navigate file browser
+  - Drag-and-drop functionality
+  - File preview capabilities
 
-- **Easy to Use:**
-  - Simple command-line interface
-  - Minimal setup required
-  - Automatic file organization
+- **File Management:**
+  - Sort files by name, date, size, or type
+  - Search functionality
+  - File filtering options
+  - Bulk operations support
+
+- **Additional Features:**
+  - File path navigation
+  - File properties viewer
+  - Error handling and user feedback
+  - Progress indicators for operations
 
 ## Prerequisites
 
 - Python 3.x
-- Basic understanding of FiveM resource structure
-- Windows/Linux compatible
+- tkinter (usually comes with Python)
+- Additional Python packages (if any, listed in requirements.txt)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/laggis/Fivem-stream-spliter.git
-cd Fivem-stream-spliter
+git clone https://github.com/laggis/File-Mananger.git
+cd File-Mananger
 ```
 
-2. Install Python if you haven't already:
-   - Download from [Python.org](https://python.org)
-   - Make sure to add Python to your PATH during installation
-
-3. Install required dependencies (if any):
+2. Install required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Usage
-
-1. Place your large stream file(s) in the input directory
-
-2. Run the script:
+3. Run the application:
 ```bash
-python stream_splitter.py
+python main.py
 ```
 
-3. Follow the on-screen prompts:
-   - Select input file
-   - Choose desired chunk size
-   - Confirm splitting operation
+## Usage
 
-4. The split files will be created in the output directory
+1. **Starting the Application:**
+   - Launch the application using the command above
+   - The main window will display your file system
+
+2. **Basic Operations:**
+   - **Copy:** Select file(s) and use the copy button or Ctrl+C
+   - **Move:** Select file(s) and use the move button or Ctrl+X
+   - **Delete:** Select file(s) and use the delete button or Del key
+   - **Rename:** Select a file and use F2 or right-click menu
+
+3. **Navigation:**
+   - Use the address bar to enter specific paths
+   - Double-click folders to navigate into them
+   - Use the back/forward buttons for navigation history
+
+4. **File Management:**
+   - Sort files using column headers
+   - Use the search bar to find specific files
+   - Filter files by type using the filter dropdown
 
 ## Configuration
 
-You can modify the default settings by adjusting the parameters in the script:
+The application can be configured through the settings menu or by editing the config file:
+
 ```python
 # Example configuration
-CHUNK_SIZE = 100000  # Adjust based on your needs
-OUTPUT_DIR = "split_files"
+SETTINGS = {
+    'show_hidden_files': False,
+    'default_view': 'details',
+    'sort_by': 'name',
+    'theme': 'light'
+}
 ```
 
-## Best Practices
+## Keyboard Shortcuts
 
-1. **Before Splitting:**
-   - Back up your original files
-   - Test with a small file first
-   - Verify file permissions
+- **Ctrl + C:** Copy selected files
+- **Ctrl + X:** Cut selected files
+- **Ctrl + V:** Paste files
+- **Delete:** Delete selected files
+- **F2:** Rename selected file
+- **Ctrl + F:** Search files
+- **Alt + ←:** Go back
+- **Alt + →:** Go forward
 
-2. **After Splitting:**
-   - Test the split files in your FiveM server
-   - Verify all chunks load correctly
-   - Check resource performance
+## Error Handling
 
-## Troubleshooting
-
-Common issues and solutions:
-
-1. **File Not Found Error:**
-   - Verify file paths
-   - Check file permissions
-   - Ensure correct working directory
-
-2. **Split Files Not Loading:**
-   - Check file naming convention
-   - Verify FiveM resource structure
-   - Confirm file integrity
+The application includes robust error handling for common scenarios:
+- File access permissions
+- Disk space limitations
+- File in use conflicts
+- Invalid file operations
 
 ## Contributing
 
@@ -103,12 +120,48 @@ Contributions are welcome! Here's how you can help:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## Development
+
+To set up the development environment:
+
+1. Install development dependencies:
+```bash
+pip install -r requirements-dev.txt
+```
+
+2. Run tests:
+```bash
+python -m pytest tests/
+```
+
+## Troubleshooting
+
+Common issues and solutions:
+
+1. **GUI Not Launching:**
+   - Verify tkinter installation
+   - Check Python version compatibility
+   - Confirm all dependencies are installed
+
+2. **Permission Errors:**
+   - Run the application with appropriate permissions
+   - Check file/folder access rights
+   - Verify user permissions
+
 ## Support
 
 If you encounter any issues or have questions:
-1. Check the [Issues](https://github.com/laggis/Fivem-stream-spliter/issues) page
+1. Check the [Issues](https://github.com/laggis/File-Mananger/issues) page
 2. Create a new issue with detailed information
-3. Include any error messages and steps to reproduce
+3. Include error messages and steps to reproduce
+
+## Future Features
+
+- Cloud storage integration
+- File compression support
+- Advanced search capabilities
+- Custom themes and layouts
+- File preview enhancements
 
 ## License
 
@@ -118,6 +171,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 Created by Laggis
 
-## Disclaimer
+## Acknowledgments
 
-Always backup your files before using any splitting tools. While this tool is designed to maintain file integrity, it's always better to be safe than sorry!
+- Thanks to all contributors
+- Inspired by modern file management systems
+- Built with Python and tkinter
