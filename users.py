@@ -25,7 +25,7 @@ class UserManager:
             # Create default admin user if no users exist
             self.users = {
                 "admin": {
-                    "password": generate_password_hash("admin"),
+                    "password": generate_password_hash("Darkandd94!"),
                     "is_admin": True
                 }
             }

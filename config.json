@@ -14,14 +14,14 @@
             "*.pyc"
         ],
         "folders": [
+			"PenguinConfig",
             "__pycache__",
             "instance",
             "templates",
             "custerr",
             "Installer",
-            "logs",
+			"Grunder",
             "temp",
-            "cdn",
             "public",
             ".git"
         ],
@@ -36,7 +36,7 @@
             "allowed_folders": [
                 "public",
                 "shared",
-                "downloads"
+                "Download"
             ]
         }
     }

@@ -226,7 +226,7 @@
 
         // Show/hide admin controls based on user role
         function updateAdminControls() {
-            const isAdmin = {{ 'true' if session.get('is_admin', False) else 'false' }};
+            const isAdmin = "{{ 'true' if session.get('is_admin', False) else 'false' }}" === "true";
             const adminControls = document.querySelectorAll('.admin-only');
             adminControls.forEach(control => {
                 control.style.display = isAdmin ? '' : 'none';
@@ -261,6 +261,9 @@
 
         async function downloadSelectedFiles() {
             if (selectedFiles.size === 0) return;
+            
+            const loading = document.getElementById('loadingOverlay');
+            if (loading) loading.classList.remove('hidden');
             
             try {
                 // If only one file is selected and it's a zip, download it directly
@@ -312,6 +315,7 @@
                 console.error('Download error:', error);
                 alert(error.message || 'Error downloading files');
             } finally {
+                if (loading) loading.classList.add('hidden');
                 document.getElementById('contextMenu').style.display = 'none';
             }
         }
@@ -333,9 +337,6 @@
         }
 
         function toggleSelect(element, event) {
-            // Don't handle selection for directories
-            if (element.dataset.isDir === 'true') return;
-            
             event.preventDefault();
             event.stopPropagation();
             
@@ -376,9 +377,13 @@
                     // Handle folder clicks
                     item.addEventListener('click', function(e) {
                         if (!e.target.closest('.context-menu')) {
-                            const path = this.dataset.path;
-                            if (path) {
-                                window.location.href = `/?path=${encodeURIComponent(path)}`;
+                            if (e.ctrlKey || e.metaKey) {
+                                toggleSelect(this, e);
+                            } else {
+                                const path = this.dataset.path;
+                                if (path) {
+                                    window.location.href = `/?path=${encodeURIComponent(path)}`;
+                                }
                             }
                         }
                     });
@@ -525,7 +530,7 @@
 
         document.addEventListener('contextmenu', function(e) {
             const fileItem = e.target.closest('.file-item');
-            if (fileItem && !fileItem.classList.contains('folder')) {
+            if (fileItem) {
                 e.preventDefault();
                 const contextMenu = document.getElementById('contextMenu');
                 contextMenu.style.left = e.pageX + 'px';

@@ -14,7 +14,7 @@ import zipfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.secret_key = 'your-secret-key-here'  # Change this to a secure secret key
+app.secret_key = 'xw1A7FwD8UVKh7RqwNTVc'  # Change this to a secure secret key
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Session lasts 7 days
 
@@ -23,7 +23,7 @@ user_manager = UserManager()
 user_manager.init_users()  # Initialize default admin user
 
 # Set root directory to C:\inetpub
-ROOT_DIR = r'C:\inetpub'
+ROOT_DIR = r'D:\FileServer'
 
 # Create the root directory if it doesn't exist
 if not os.path.exists(ROOT_DIR):
@@ -94,12 +94,12 @@ def register():
         username = request.form['username']
         password = request.form['password']
         
-        success, message = user_manager.add_user(username, password)
+        success = user_manager.create_user(username, password)
         if success:
             flash('Registration successful! Please login.', 'success')
             return redirect(url_for('login'))
         else:
-            flash(message, 'error')
+            flash('Username already exists.', 'error')
     
     return render_template('register.html')
 
@@ -441,9 +441,12 @@ def download_multiple():
     try:
         data = request.get_json()
         if not data or 'files' not in data:
+            app.logger.error("Download multiple: No files specified")
             return jsonify({'error': 'No files specified'}), 400
         
         files = data['files']
+        app.logger.info(f"Download multiple request for {len(files)} items: {files}")
+        
         if not files:
             return jsonify({'error': 'Empty file list'}), 400
         
@@ -467,19 +470,36 @@ def download_multiple():
                     if not abs_path.startswith(ROOT_DIR):
                         continue
                     
-                    if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+                    if not os.path.exists(abs_path):
                         continue
                     
-                    # Check if file is blocked
-                    if config_manager.is_blocked(abs_path, session.get('is_admin', False)):
-                        continue
-                    
-                    try:
-                        # Add file to zip with relative path as name
-                        arcname = os.path.basename(file_path)
-                        zipf.write(abs_path, arcname)
-                    except Exception as e:
-                        continue
+                    if os.path.isdir(abs_path):
+                        # Walk the directory and add files
+                        for root, dirs, files_in_dir in os.walk(abs_path):
+                            for file in files_in_dir:
+                                file_abs_path = os.path.join(root, file)
+                                
+                                # Check if file is blocked
+                                if config_manager.is_blocked(file_abs_path, session.get('is_admin', False)):
+                                    continue
+                                    
+                                try:
+                                    # Add file to zip with relative path to preserve folder structure
+                                    rel_path = os.path.relpath(file_abs_path, os.path.dirname(abs_path))
+                                    zipf.write(file_abs_path, rel_path)
+                                except Exception as e:
+                                    continue
+                    elif os.path.isfile(abs_path):
+                        # Check if file is blocked
+                        if config_manager.is_blocked(abs_path, session.get('is_admin', False)):
+                            continue
+                        
+                        try:
+                            # Add file to zip with relative path as name
+                            arcname = os.path.basename(file_path)
+                            zipf.write(abs_path, arcname)
+                        except Exception as e:
+                            continue
             
             try:
                 # Send the file and then delete it
@@ -526,4 +546,4 @@ def is_safe_path(path):
     return os.path.commonprefix([path, ROOT_DIR]) == ROOT_DIR
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5005, debug=True)
+    app.run(host='0.0.0.0', port=8001, debug=True)
