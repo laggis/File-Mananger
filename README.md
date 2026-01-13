@@ -1,83 +1,82 @@
-# Discord File Bot (MySQL Edition)
+# PenguinHosting File Manager
 
-This bot allows you to share large files (1GB+) on Discord by generating secure download links from your Windows IIS server. It now uses **MySQL** for robust data persistence and supports **External Mirrors**.
+A powerful, secure, and modern web-based file manager built with Flask. This application provides a sleek "Cyber/Glass" interface for managing files on your server with robust user authentication and role-based access control.
 
-## Features
--   **MySQL Database**: Persistent storage for all resources. No data loss on restart.
--   **Edit Capabilities**: Edit titles, descriptions, filenames, and links of posted resources directly from Discord (Right-click -> Apps -> Edit Resource).
--   **Auto-Sync**: Changes made directly in the MySQL database (Title, Description, Filename) are automatically synced to Discord messages when the bot restarts.
--   **Auto-Delete**: Automatically removes resources from the database when the Discord message is deleted.
--   **Smart File Search**: Auto-detects archive files (`.zip`, `.rar`, `.7z`, `.tar`, `.gz`) inside folders if the exact filename isn't known.
--   **External Mirrors**: Support for direct links to external sites (e.g., Google Drive, Mega) alongside or instead of local files.
--   **Smart Expiration**: Set links to expire after a certain time or make them unlimited.
--   **Bypass Discord Limits**: Serve files of any size.
+## 🚀 Features
 
-## Prerequisites
--   **Python 3.10 or higher**.
--   **MySQL Server** (local or remote).
--   **Windows IIS Web Server** (for hosting local files).
--   A Discord Bot Token.
+- **📂 File Management**
+  - Browse directories and view file details.
+  - **Download as ZIP**: Select multiple files or folders (Ctrl+Click / Checkbox) and download them as a single ZIP archive.
+  - Recursively zips folder contents.
+  - Upload files and create new folders (Admin only).
+  - Delete files and directories (Admin only).
 
-## Setup
+- **🔐 Security & Access Control**
+  - **Role-Based Access**: strict separation between **Admin** and **User** roles.
+  - **Blocked Items**: Automatically protects sensitive system files (e.g., `*.py`, `config.json`, `__pycache__`) from being accessed or downloaded.
+  - Configurable blocking rules via `config.json`.
+  - Secure login and registration system.
 
-1.  **Install Dependencies**
+- **🎨 Modern UI/UX**
+  - Responsive design using **Tailwind CSS**.
+  - Glass-morphism effect with a dark "Cyber" theme.
+  - Context menus (Right-click) for quick actions.
+  - Real-time loading indicators for large operations.
+
+## 🛠️ Installation
+
+1.  **Clone the repository** (or download the source code).
+
+2.  **Install Dependencies**:
+    Ensure you have Python 3.x installed, then run:
     ```bash
     pip install -r requirements.txt
     ```
 
-2.  **Database Setup**
-    -   Ensure your MySQL server is running.
-    -   Create a database (default: `discord_file_bot`) or let the bot create it automatically.
-    -   (Optional) Use `schema.sql` to manually create the table structure.
+3.  **Configure Root Directory**:
+    Open `filemanager.py` and set the `ROOT_DIR` variable to the folder you want to manage:
+    ```python
+    ROOT_DIR = r'D:\FileServer'  # Change this to your desired path
+    ```
+    *Note: If the path does not exist, it will default to the application's own directory.*
 
-3.  **Configuration**
-    -   Rename `.env.example` to `.env`.
-    -   Edit `.env` with your settings:
-        ```env
-        DISCORD_TOKEN=your_token_here
-        GUILD_ID=your_guild_id (optional, for instant command sync)
-        
-        # IIS Configuration
-        IIS_BASE_URL=https://your-site.com/files
-        LOCAL_FILE_PATH=C:\inetpub\wwwroot\files\
-        
-        # Database Configuration
-        MYSQL_HOST=localhost
-        MYSQL_USER=root
-        MYSQL_PASSWORD=your_password
-        MYSQL_DATABASE=discord_file_bot
-        MYSQL_PORT=3306
-        ```
+## 🚀 Usage
 
-4.  **Run the Bot**
+1.  **Start the Server**:
     ```bash
-    python main.py
+    python filemanager.py
     ```
 
-## Usage
+2.  **Access the Interface**:
+    Open your web browser and navigate to:
+    `http://localhost:8001`
 
-### Posting a Resource
-Use the `/post_resource` command to open the submission form:
--   **Title**: The name of the resource.
--   **Description**: Details about the file.
--   **Filename**: (Optional) The relative path to the file on your IIS server (e.g., `Dragonfire/[Dragonfire].zip`).
--   **Direct Link**: (Optional) An external link (e.g., Google Drive). *You must provide either a Filename or a Direct Link.*
--   **Link Expiration**: Set how long the download link lasts (e.g., `1` hour, or `0` for unlimited).
+3.  **Default Admin Credentials**:
+    On the first run, a default admin account is created:
+    - **Username**: `admin`
+    - **Password**: `Darkandd94!`
+    
+    ⚠️ **IMPORTANT**: Log in and change this password immediately via the "Profile" page.
 
-### Editing a Resource
-1.  Right-click on the bot's message.
-2.  Go to **Apps** -> **Edit Resource**.
-3.  Update the Title, Description, Filename, or Direct Link.
-4.  The message and database will update instantly.
+## ⚙️ Configuration
 
-## IIS Configuration
--   Point `IIS_BASE_URL` to the **root directory** where your files are hosted.
--   The bot appends the `Filename` you provide to this base URL.
--   **Example**:
-    -   `IIS_BASE_URL`: `https://dl.mysite.com`
-    -   `Filename`: `Mods/Pack.zip`
-    -   Result: `https://dl.mysite.com/Mods/Pack.zip`
+### `config.json`
+This file controls which files and folders are hidden or blocked from users.
+- **`files`**: List of filenames or patterns (e.g., `*.py`) to block.
+- **`folders`**: List of directory names to hide (e.g., `temp`, `logs`).
+- **`exceptions`**: Allow specific overrides (e.g., allowing admins to see blocked files).
 
-## Troubleshooting
--   **Database Errors**: Check your `MYSQL_` settings in `.env`. Ensure the user has permission to create tables.
--   **File Not Found**: Ensure `LOCAL_FILE_PATH` is correct and the bot has read permissions to that folder.
+### `users.json`
+Stores user credentials (hashed) and role information. Created automatically on first run.
+
+## 📝 Requirements
+
+- Python 3.6+
+- Flask
+- Werkzeug
+- humanize
+- requests
+
+## 🤝 Contributing
+
+Feel free to fork this project and submit pull requests. For major changes, please open an issue first to discuss what you would like to change.
