@@ -602,5 +602,9 @@
     "hERMANOS": {
         "password": "pbkdf2:sha256:260000$folkuzmPoW1XjQAx$d0085bf25daee80c7c77b94d64d46f83255b581f3527e842f260a856fa928ceb",
         "is_admin": false
+    },
+    "admin": {
+        "password": "pbkdf2:sha256:260000$CPxaprSbfpxjvNZd$2e893e769f1b0cd956f14c118078ccbe89911f640c7dbb89e2a82af4fa022d25",
+        "is_admin": true
     }
 }

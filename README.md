@@ -54,7 +54,7 @@ A powerful, secure, and modern web-based file manager built with Flask. This app
 3.  **Default Admin Credentials**:
     On the first run, a default admin account is created:
     - **Username**: `admin`
-    - **Password**: `Darkandd94!`
+    - **Password**: `admin`
     
     ⚠️ **IMPORTANT**: Log in and change this password immediately via the "Profile" page.
 
