@@ -14,7 +14,7 @@ import zipfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-app.secret_key = 'xw1A7FwD8UVKh7RqwNTVc'  # Change this to a secure secret key
+app.secret_key = 'your_secret_key'  # Change this to a secure secret key
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Session lasts 7 days
 
